@@ -6,23 +6,34 @@ import { safe } from '../utils/calcUtils';
 const { Text } = Typography;
 
 export default function Knows({ values }) {
-  // Новые показатели
-  const checkAvg = safe(values['Check Avg - Net']);
+  // Новые базовые метрики
   const netSales = safe(values['Net Sales']);
+  const cogs      = safe(values['Cost of Goods Sold']);
+  const labor     = safe(values['Total Labor']);
+
+  // Расчёт COGS% и Labor%
+  const cogsPercent  = netSales > 0 ? (cogs / netSales) * 100 : 0;
+  const laborPercent = netSales > 0 ? (labor / netSales) * 100 : 0;
+
+  // Prime Cost = COGS% + Labor%
+  const primeCostPercent = cogsPercent + laborPercent;
+
+  // Check Average и Actual Net Sales
+  const checkAvg  = safe(values['Check Avg - Net']);
 
   // Daypart %
   const dayparts = {
-    'Breakfast %': safe(values['Breakfast %']),
-    'Lunch %': safe(values['Lunch %']),
-    'Afternoon %': safe(values['Afternoon %']),
-    'Evening %': safe(values['Evening %']),
+    'Breakfast %':   safe(values['Breakfast %']),
+    'Lunch %':       safe(values['Lunch %']),
+    'Afternoon %':   safe(values['Afternoon %']),
+    'Evening %':     safe(values['Evening %']),
   };
   const busiest = Object.entries(dayparts).sort((a, b) => b[1] - a[1])[0];
 
   // OLO%
-  const thirdParty  = safe(values['3rd Party Digital Sales']);
+  const thirdParty   = safe(values['3rd Party Digital Sales']);
   const pandaDigital = safe(values['Panda Digital Sales']);
-  const oloPercent  = netSales > 0 
+  const oloPercent   = netSales > 0 
     ? ((thirdParty + pandaDigital) / netSales) * 100 
     : 0;
 
@@ -34,20 +45,16 @@ export default function Knows({ values }) {
   // Собираем все карточки
   const metrics = [
     {
-      label: 'Actual Net Sales',
-      value: `$${netSales.toLocaleString()}`,
-    },
-    {
-      label: 'Total Transactions',
-      value: `${transactions}`,
-    },
-    {
       label: 'Check Average',
       value: `$${checkAvg.toFixed(2)}`,
     },
     {
-      label: 'OLO %',
-      value: `${oloPercent.toFixed(2)}%`,
+      label: 'Actual Net Sales',
+      value: `$${netSales.toLocaleString()}`,
+    },
+    {
+      label: 'Prime Cost',
+      value: `${primeCostPercent.toFixed(2)}%`,
     },
     ...Object.entries(dayparts).map(([label, value]) => ({
       label,
@@ -58,6 +65,10 @@ export default function Knows({ values }) {
       value: `${busiest[0]} (${busiest[1].toFixed(2)}%)`,
     },
     {
+      label: 'OLO %',
+      value: `${oloPercent.toFixed(2)}%`,
+    },
+    {
       label: 'Average Hourly Wage',
       value: `$${hourlyWage.toFixed(2)}`,
     },
@@ -65,7 +76,10 @@ export default function Knows({ values }) {
       label: 'Overtime Hours',
       value: `${overtimeHours}`,
     },
- 
+    {
+      label: 'Total Transactions',
+      value: `${transactions}`,
+    },
   ];
 
   return (

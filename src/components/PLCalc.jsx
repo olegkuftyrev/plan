@@ -1,3 +1,5 @@
+// src/components/PLCalc.jsx
+import React from 'react';
 import { Card, Col, Row, Tooltip, Typography } from 'antd';
 import {
   calcSSS,
@@ -15,207 +17,160 @@ import {
 
 const { Text, Title } = Typography;
 
-// 🔧 новая функция — ищет правильный Advertising
+// Ищет последний Advertising перед Controllable Profit
 function getLastAdvertisingBeforeCP(rows, actualIdx) {
   const cpIndex = rows.findIndex(row => row[0] === 'Controllable Profit');
   if (cpIndex === -1) return 0;
-
   for (let i = cpIndex - 1; i >= 0; i--) {
-    if (rowLabel(rows[i]) === 'Advertising') {
+    if ((rows[i][0] || '').toString().trim() === 'Advertising') {
       return safe(rows[i][actualIdx]);
     }
   }
   return 0;
 }
 
-function rowLabel(row) {
-  return (row?.[0] ?? '').toString().trim();
-}
-
-function Stat({ label, value, color, formula, applied }) {
-  return (
-    <Card style={{ height: '100%' }}>
-      <Title level={5} style={{ marginBottom: 8 }}>
-        {label}
-      </Title>
-      <Text strong style={{ fontSize: '18px', color: color || 'black' }}>
-        {value}
-      </Text>
-      <div style={{ marginTop: 8 }}>
-        <Tooltip title={applied}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {formula}
-          </Text>
-        </Tooltip>
-      </div>
-    </Card>
-  );
-}
-
 export default function PLCalc({ rows, values, actualIdx }) {
-  const actual = safe(values['Net Sales']);
-  const prior = safe(values['Prior Net Sales']);
-  const plan = safe(values['Plan Net Sales']);
+  const actual   = safe(values['Net Sales']);
+  const prior    = safe(values['Prior Net Sales']);
+  const plan     = safe(values['Plan Net Sales']);
+  const direct   = safe(values['Direct Labor']);
+  const mgmt     = safe(values['Management Labor']);
+  const tax      = safe(values['Taxes and Benefits']);
+  const laborTot = calcLabor({
+    'Direct Labor': direct,
+    'Management Labor': mgmt,
+    'Taxes and Benefits': tax,
+  });
 
-  const direct = safe(values['Direct Labor']);
-  const mgmt = safe(values['Management Labor']);
-  const tax = safe(values['Taxes and Benefits']);
-  const laborTotal = calcLabor({ 'Direct Labor': direct, 'Management Labor': mgmt, 'Taxes and Benefits': tax });
-
-  const cogs = safe(values['Cost of Goods Sold']);
+  const cogs         = safe(values['Cost of Goods Sold']);
   const controllables = safe(values['Total Controllables']);
+  const adv          = getLastAdvertisingBeforeCP(rows, actualIdx);
 
-  const adv = getLastAdvertisingBeforeCP(rows, actualIdx); 
-
-  const cp = calcControllableProfit({ netSales: actual, cogs, labor: laborTotal, controllables, advertising: adv });
-  const cpPrior = safe(values['Prior Controllable Profit']);
+  const cp       = calcControllableProfit({ netSales: actual, cogs, labor: laborTot, controllables, advertising: adv });
+  const cpPrior  = safe(values['Prior Controllable Profit']);
   const cpChange = calcCPImprovement(cp, cpPrior);
 
   const bonus = safe(values['Bonus']);
-  const wc = safe(values['Workers Comp']);
+  const wc    = safe(values['Workers Comp']);
   const adjCP = calcAdjustedCP(cp, bonus, wc);
 
-  const fixed = safe(values['Total Fixed Cost']);
-  const rc = calcRestaurantContribution(cp, fixed);
+  const fixed      = safe(values['Total Fixed Cost']);
+  const restaurant = calcRestaurantContribution(cp, fixed);
 
-  const amort = safe(values['Amortization']);
-  const depr = safe(values['Depreciation']);
-  const cashflow = calcCashFlow(rc, amort, depr);
+  const amort     = safe(values['Amortization']);
+  const depr      = safe(values['Depreciation']);
+  const cashflow  = calcCashFlow(restaurant, amort, depr);
 
+  const flow       = calcFlowThru(cp, cpPrior, actual, prior);
+  const cpPercent  = calcControllableProfitPercent(cp, actual);
+  const laborPerc  = calcLaborPercent(laborTot, actual);
+  const sss        = calcSSS(actual, prior);
 
-
-  const flow = calcFlowThru(cp, cpPrior, actual, prior);
-  const cpPercent = calcControllableProfitPercent(cp, actual);
-  const laborPercent = calcLaborPercent(laborTotal, actual);
-  const sss = calcSSS(actual, prior);
-  const cogsPercent = actual !== 0 ? (cogs / actual) * 100 : 0;
-  const cogsColor = cogsPercent >= 30 ? 'red' : 'green';
-
-
-  
-
-console.log('📎 CP actual:', cp);
-console.log('📎 CP prior raw:', values['Prior Controllable Profit']);
-console.log('📎 CP prior safe:', safe(values['Prior Controllable Profit']));
+  // Собираем все метрики в массив
+  const metrics = [
+    {
+      label: 'Net Sales (Actual)',
+      value: `$${actual.toLocaleString()}`,
+      formula: 'Net Sales (Actual)',
+      applied: `Actual Net Sales: $${actual}`,
+    },
+    {
+      label: 'COGS $',
+      value: `$${cogs.toLocaleString()}`,
+      formula: 'Cost of Goods Sold',
+      applied: `COGS: $${cogs}`,
+    },
+    {
+      label: 'COGS %',
+      value: `${((actual>0?cogs/actual:0)*100).toFixed(2)}%`,
+      color: (actual>0?cogs/actual*100:0) >= 30 ? 'red' : 'green',
+      formula: 'COGS / Net Sales * 100',
+      applied: `$${cogs} / $${actual}`,
+    },
+    {
+      label: 'Labor Total',
+      value: `$${laborTot.toLocaleString()}`,
+      formula: 'Direct + Management + Taxes',
+      applied: `$${direct} + $${mgmt} + $${tax}`,
+    },
+    {
+      label: 'Labor %',
+      value: `${laborPerc.toFixed(2)}%`,
+      color: laborPerc > 30 ? 'red' : 'black',
+      formula: 'Total Labor / Net Sales * 100',
+      applied: `$${laborTot} / $${actual}`,
+    },
+    {
+      label: 'Controllable Profit $',
+      value: `$${cp.toLocaleString()}`,
+      formula: 'Net Sales - (COGS + Labor + Controllables + Advertising)',
+      applied: `$${actual} - ($${cogs} + $${laborTot} + $${controllables} + $${adv})`,
+    },
+    {
+      label: 'CP %',
+      value: `${cpPercent.toFixed(2)}%`,
+      formula: 'CP / Net Sales * 100',
+      applied: `$${cp} / $${actual}`,
+    },
+    {
+      label: 'Adjusted CP',
+      value: `$${adjCP.toLocaleString()}`,
+      formula: 'CP + Bonus + Workers Comp',
+      applied: `$${cp} + $${bonus} + $${wc}`,
+    },
+    {
+      label: 'CP Improvement',
+      value: `$${cpChange.toLocaleString()}`,
+      color: cpChange >= 0 ? 'green' : 'red',
+      formula: 'CP Actual - CP Prior',
+      applied: `$${cp} - $${cpPrior}`,
+    },
+    {
+      label: 'Restaurant Contribution',
+      value: `$${restaurant.toLocaleString()}`,
+      formula: 'CP - Fixed Cost',
+      applied: `$${cp} - $${fixed}`,
+    },
+    {
+      label: 'Cash Flow',
+      value: `$${cashflow.toLocaleString()}`,
+      formula: 'RC + Amortization + Depreciation',
+      applied: `$${restaurant} + $${amort} + $${depr}`,
+    },
+    {
+      label: 'Flow Thru %',
+      value: `${flow.toFixed(2)}%`,
+      formula: '(CP Actual - CP Prior) / (Net Sales Actual - Net Sales Prior) * 100',
+      applied: `($${cp} - $${cpPrior}) / ($${actual} - $${prior})`,
+    },
+    {
+      label: 'SSS %',
+      value: `${sss.toFixed(2)}%`,
+      color: sss >= 0 ? 'green' : 'red',
+      formula: '(Actual Net Sales - Prior Net Sales) / Prior Net Sales * 100',
+      applied: `($${actual} - $${prior}) / $${prior}`,
+    },
+  ];
 
   return (
-    <>
-      <Row gutter={[16, 16]}>
-        <Col span={6}>
-          <Stat
-            label="Net Sales (Actual)"
-            value={`$${actual.toLocaleString()}`}
-            formula="Net Sales (Actual)"
-            applied={`Actual Net Sales: $${actual}`}
-          />
+    <Row gutter={[16, 16]}>
+      {metrics.map(({ label, value, color, formula, applied }, i) => (
+        <Col key={i} xs={24} sm={12} md={8} lg={6}>
+          <Card size="small">
+            <Text type="secondary">{label}</Text>
+            <br />
+            <Text strong style={{ color: color || 'black' }}>
+              {value}
+            </Text>
+            <br />
+            <Tooltip title={applied}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {formula}
+              </Text>
+            </Tooltip>
+          </Card>
         </Col>
-        <Col span={6}>
-        <Stat
-  label="COGS $"
-  value={`$${cogs.toLocaleString()}`}
-  formula="Cost of Goods Sold"
-  applied={`COGS: $${cogs}`}
-  />
-        </Col>
-        <Col span={6}>
-        <Stat
-  label="COGS %"
-  value={`${cogsPercent.toFixed(2)}%`}
-  color={cogsColor}
-  formula="COGS% / Net Sales"
-  applied={`$${cogs} / $${actual}`}
-/>
-</Col>
-        <Col span={6}>
-          <Stat
-            label="Labor Total"
-            value={`$${laborTotal.toLocaleString()}`}
-            formula="Direct + Management + Taxes"
-            applied={`$${direct} + $${mgmt} + $${tax}`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="Labor %"
-            value={`${laborPercent.toFixed(2)}%`}
-            color={laborPercent > 30 ? 'red' : 'black'}
-            formula="Total Labor / Net Sales * 100"
-            applied={`$${laborTotal} / $${actual}`}
-          />
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={6}>
-          <Stat
-            label="Controllable Profit $"
-            value={`$${cp.toLocaleString()}`}
-            formula="Net Sales - (COGS + Labor + Controllables + Advertising)"
-            applied={`$${actual} - ($${cogs} + $${laborTotal} + $${controllables} + $${adv})`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="CP %"
-            value={`${cpPercent.toFixed(2)}%`}
-            formula="CP / Net Sales"
-            applied={`$${cp} / $${actual}`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="Adjusted CP"
-            value={`$${adjCP.toLocaleString()}`}
-            formula="CP + Bonus + Workers Comp"
-            applied={`$${cp} + $${bonus} + $${wc}`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="CP Improvement"
-            value={`$${cpChange.toLocaleString()}`}
-            color={cpChange >= 0 ? 'green' : 'red'}
-            formula="CP Actual - CP Prior"
-            applied={`$${cp} - $${cpPrior}`}
-          />
-        </Col>
-      </Row>
-
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col span={6}>
-          <Stat
-            label="Restaurant Contribution"
-            value={`$${rc.toLocaleString()}`}
-            formula="CP - Fixed Cost"
-            applied={`$${cp} - $${fixed}`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="Cash Flow"
-            value={`$${cashflow.toLocaleString()}`}
-            formula="RC + Amortization + Depreciation"
-            applied={`$${rc} + $${amort} + $${depr}`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="Flow Thru %"
-            value={`${flow.toFixed(2)}%`}
-            formula="(CP Actual - CP Prior) / (Net Sales Actual - Net Sales Prior)"
-            applied={`($${cp} - $${cpPrior}) / ($${actual} - $${prior})`}
-          />
-        </Col>
-        <Col span={6}>
-          <Stat
-            label="SSS %"
-            value={`${sss.toFixed(2)}%`}
-            color={sss >= 0 ? 'green' : 'red'}
-            formula="(Actual Net Sales - Prior Net Sales) / Prior Net Sales * 100"
-            applied={`($${actual} - $${prior}) / $${prior}`}
-          />
-        </Col>
-      </Row>
-    </>
+      ))}
+    </Row>
   );
 }
