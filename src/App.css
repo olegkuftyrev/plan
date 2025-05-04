@@ -1,0 +1,65 @@
+/* fill entire viewport */
+.app-layout {
+  min-height: 100vh;
+}
+
+/* Header */
+.app-header {
+  background: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.app-title {
+  margin: 0;
+  color: #000;
+}
+
+/* Content area */
+.app-content {
+  flex: 1 0 auto;
+  background: #f0f2f5;
+  padding: 24px;
+}
+.upload-card {
+  max-width: 400px;
+  margin: 0 auto;
+}
+.upload-dragger {
+  padding: 24px 0;
+}
+.upload-icon {
+  font-size: 32px;
+  color: #1890ff;
+}
+.upload-text {
+  margin-top: 16px;
+}
+
+/* Footer */
+.app-footer {
+  text-align: center;
+  background: #fff;
+  padding: 12px 24px;
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.05);
+}
+/* separator row styling */
+.table-separator-row td[colspan] {
+  background: transparent !important;
+  height: 12px;
+}
+.metric-card {
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.metric-card .ant-typography {
+  line-height: 1.4;
+}
+.metric-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+}
