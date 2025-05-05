@@ -3,6 +3,7 @@ import { Layout, Upload, Row, Col, Collapse, message, Typography, Button } from 
 import { InboxOutlined } from '@ant-design/icons';
 import useExcelRows from '../hooks/useExcelRows';
 import parseValues from '../utils/parseValues';
+import NavBar from '../components/NavBar';
 
 import PLCalc from '../components/PLCalc';
 import Sales from '../components/Sales';
@@ -43,20 +44,7 @@ export default function App() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-     <Header style={{ background: '#fff', padding: '0 24px' }}>
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Title level={4} style={{ margin: 0 }}>
-              Dashboard
-            </Title>
-          </Col>
-          <Col>
-            <Button type="primary" onClick={logout}>
-              Logout
-            </Button>
-          </Col>
-        </Row>
-      </Header>
+     <NavBar title="Dashboard" />
       <Content style={{ padding: 24 }}>
         {!rows.length ? (
           <Dragger

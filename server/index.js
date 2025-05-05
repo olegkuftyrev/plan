@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 const sequelize  = require('./db');
 const passport   = require('./passport');
 const authRoutes = require('./routes/auth');
-const { CLIENT_PORT, SERVER_PORT } = require('../config/ports.json');
+const { CLIENT_PORT, SERVER_PORT } = require('../config/ports');
 
 // Ловим необработанные ошибки, чтобы не падать без лога
 process.on('uncaughtException', (err) => {
